@@ -1,0 +1,37 @@
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Python virtual environment
+.venv/
+
+# Python-generated files
+__pycache__/
+*.py[cod]
+
+# Automated testing and linting caches
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Generated application data
+data/uploads/
+data/processed/
+data/*.db
+
+# Local model and embedding caches
+.cache/
+
+# SQLite temporary and backup files
+data/*.db-*
+data/*.sqlite*
+data/*.backup.db
+
+# Local backup files
+*.bak
+*.tmp
+# Temporary repair copies
+src/pdf_chatbot/repositories/*.before_repair.txt
+src/pdf_chatbot/services/*.before_repair.txt

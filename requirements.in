@@ -1,0 +1,33 @@
+# ============================================================
+# PDF CHATBOT - DIRECT DEPENDENCIES
+# ============================================================
+
+# Streamlit: Builds the web interface for PDF upload and chat.
+streamlit
+
+# PyMuPDF: Extracts text and page numbers from PDF documents.
+pymupdf
+
+# LangChain Text Splitters: Divides extracted text into overlapping chunks.
+langchain-text-splitters
+
+# Sentence Transformers: Generates embeddings for semantic text search.
+sentence-transformers
+
+# NumPy: Performs numerical calculations and embedding similarity ranking.
+numpy
+
+# Groq: Connects to the Groq API for large language model responses.
+groq
+
+# Pydantic Settings: Loads and validates application configuration.
+pydantic-settings
+
+# Python Dotenv: Supports loading local environment variables from .env.
+python-dotenv
+
+# Pytest: Runs automated tests for application components.
+pytest
+
+# Ruff: Checks Python code quality and formatting.
+ruff
