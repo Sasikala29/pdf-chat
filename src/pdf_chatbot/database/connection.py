@@ -1,16 +1,19 @@
-
 """SQLite connection management and backward-compatible database migrations."""
 
 import sqlite3
+from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Iterator
 
-# Resolve the database location from the project root.
-DATABASE_PATH = (
-    Path(__file__).resolve().parents[3] / "data" / "pdf_chatbot.db"
-)
+# Input: Current file location.
+# Return: Absolute path to the SQLite database file.
+# Purpose: Resolves the database location relative to the project root.
+DATABASE_PATH = Path(__file__).resolve().parents[3] / "data" / "pdf_chatbot.db"
 
+
+# Input: No arguments.
+# Return: An iterator yielding an SQLite connection.
+# Purpose: Creates a configured database connection, commits successful operations,rolls back failed operations, and closes the connection.
 
 @contextmanager
 def get_connection() -> Iterator[sqlite3.Connection]:
@@ -26,14 +29,19 @@ def get_connection() -> Iterator[sqlite3.Connection]:
 
     try:
         yield connection
+        # Saves changes when the connection context exits successfully.
         connection.commit()
     except Exception:
+        # Rolls back changes if an operation raises an exception.
         connection.rollback()
         raise
     finally:
+        # Closes the database connection regardless of success or failure
         connection.close()
 
-
+# Input: No arguments.
+# Return: None.
+# Purpose: Creates the required database tables, migrates existing data,creates missing conversations, links old messages, and adds indexes.
 def initialize_database() -> None:
     """Create required tables and migrate existing data without deleting it."""
     with get_connection() as connection:
@@ -94,21 +102,15 @@ def initialize_database() -> None:
         # Inspect existing columns before applying migrations.
         document_columns = {
             row["name"]
-            for row in connection.execute(
-                "PRAGMA table_info(documents)"
-            ).fetchall()
+            for row in connection.execute("PRAGMA table_info(documents)").fetchall()
         }
 
         if "file_path" not in document_columns:
-            connection.execute(
-                "ALTER TABLE documents ADD COLUMN file_path TEXT"
-            )
+            connection.execute("ALTER TABLE documents ADD COLUMN file_path TEXT")
 
         conversation_columns = {
             row["name"]
-            for row in connection.execute(
-                "PRAGMA table_info(conversations)"
-            ).fetchall()
+            for row in connection.execute("PRAGMA table_info(conversations)").fetchall()
         }
 
         if "title" not in conversation_columns:
@@ -151,9 +153,7 @@ def initialize_database() -> None:
 
         message_columns = {
             row["name"]
-            for row in connection.execute(
-                "PRAGMA table_info(chat_messages)"
-            ).fetchall()
+            for row in connection.execute("PRAGMA table_info(chat_messages)").fetchall()
         }
 
         if "source_pages" not in message_columns:
@@ -173,9 +173,7 @@ def initialize_database() -> None:
             )
 
         # Ensure every existing PDF has a default conversation.
-        documents = connection.execute(
-            "SELECT document_id FROM documents"
-        ).fetchall()
+        documents = connection.execute("SELECT document_id FROM documents").fetchall()
 
         for document in documents:
             document_id = document["document_id"]

@@ -1,4 +1,3 @@
-
 """Persist documents, embeddings, conversations, and chat messages in SQLite."""
 
 import json
@@ -246,9 +245,7 @@ def set_conversation_documents(
         missing_ids = set(requested_ids) - existing_ids
 
         if missing_ids:
-            raise ValueError(
-                "One or more selected PDFs no longer exist."
-            )
+            raise ValueError("One or more selected PDFs no longer exist.")
 
         # Keep the legacy anchor aligned with the first selected PDF.
         # It must not force a previously linked PDF to remain associated.
@@ -278,10 +275,7 @@ def set_conversation_documents(
                 (conversation_id, document_id)
             VALUES (?, ?)
             """,
-            [
-                (conversation_id, selected_id)
-                for selected_id in requested_ids
-            ],
+            [(conversation_id, selected_id) for selected_id in requested_ids],
         )
 
 
@@ -486,9 +480,8 @@ def save_chat_message(
 
     initialize_database()
 
-    target_conversation_id = (
-        conversation_id
-        or _get_or_create_default_conversation(document_id)
+    target_conversation_id = conversation_id or _get_or_create_default_conversation(
+        document_id
     )
 
     with get_connection() as connection:
@@ -517,9 +510,7 @@ def save_chat_message(
         ).fetchone()
 
         if association is None:
-            raise ValueError(
-                "The selected PDF is not linked to this conversation."
-            )
+            raise ValueError("The selected PDF is not linked to this conversation.")
 
         connection.execute(
             """

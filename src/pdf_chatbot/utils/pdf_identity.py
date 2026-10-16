@@ -1,8 +1,8 @@
 """Identify identical PDF files and remove duplicates from display lists."""
 
 import hashlib
-from pathlib import Path
 from collections.abc import Iterable
+from pathlib import Path
 
 
 def sha256_bytes(content: bytes) -> str:

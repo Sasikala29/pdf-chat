@@ -1,4 +1,3 @@
-
 """Answer PDF questions using retrieval-augmented generation."""
 
 from src.pdf_chatbot.core.constants import (
@@ -64,12 +63,9 @@ def answer_question(
         message_document_id = conversation["document_id"]
 
         associated_documents = list_conversation_documents(conversation_id)
-        document_ids = [
-            item["document_id"] for item in associated_documents
-        ]
+        document_ids = [item["document_id"] for item in associated_documents]
         filenames = {
-            item["document_id"]: item["filename"]
-            for item in associated_documents
+            item["document_id"]: item["filename"] for item in associated_documents
         }
 
         if not document_ids:
@@ -114,8 +110,7 @@ def answer_question(
             filename = filenames.get(chunk_document_id, "Selected PDF")
 
             context_text = (
-                f"[Source PDF: {filename}; Page: {chunk.page_number}]\n"
-                f"{chunk.text}"
+                f"[Source PDF: {filename}; Page: {chunk.page_number}]\n{chunk.text}"
             )
             context_chunks.append((chunk.page_number, context_text))
 
@@ -134,17 +129,13 @@ def answer_question(
         else:
             source_pages = list(
                 dict.fromkeys(
-                    retrieved.item.chunk.page_number
-                    for retrieved in retrieved_chunks
+                    retrieved.item.chunk.page_number for retrieved in retrieved_chunks
                 )
             )
 
             if conversation_id is None:
                 # Preserve the existing single-PDF response format.
-                answer += (
-                    "\n\nSource pages: "
-                    f"{', '.join(map(str, source_pages))}"
-                )
+                answer += f"\n\nSource pages: {', '.join(map(str, source_pages))}"
             else:
                 answer += "\n\nSources: " + "; ".join(source_references)
 

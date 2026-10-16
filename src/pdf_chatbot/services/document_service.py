@@ -1,4 +1,3 @@
-
 """Coordinate PDF upload, processing, embedding, and SQLite persistence."""
 
 from dataclasses import dataclass
@@ -14,11 +13,8 @@ from src.pdf_chatbot.services.chunking_service import chunk_pages
 from src.pdf_chatbot.services.embedding_service import embed_chunks
 from src.pdf_chatbot.services.pdf_service import extract_pdf_text
 
-
 # Store original PDFs separately from the SQLite database.
-UPLOAD_DIRECTORY = (
-    Path(__file__).resolve().parents[3] / "data" / "uploads"
-)
+UPLOAD_DIRECTORY = Path(__file__).resolve().parents[3] / "data" / "uploads"
 
 
 @dataclass(frozen=True)
@@ -76,7 +72,7 @@ def process_uploaded_pdf(
     try:
         # Persist the original PDF, then its metadata and search index.
         pdf_path.write_bytes(content)
-        save_document(document_id, document.filename)
+        save_document(document_id, document.filename, str(pdf_path))
         save_chunks_and_embeddings(document_id, embedded_chunks)
 
     except Exception:

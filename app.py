@@ -1,4 +1,3 @@
-
 """Streamlit interface for DocuMind, a multi-PDF conversational assistant."""
 
 import logging
@@ -21,8 +20,8 @@ from src.pdf_chatbot.services.chat_service import (
     answer_question,
     get_document_chat_history,
 )
-from src.pdf_chatbot.services.document_service import process_uploaded_pdf
 from src.pdf_chatbot.services.deletion_service import delete_pdf_and_chats
+from src.pdf_chatbot.services.document_service import process_uploaded_pdf
 from src.pdf_chatbot.services.pdf_service import PDFProcessingError
 from src.pdf_chatbot.utils.pdf_identity import unique_documents_by_content
 
@@ -77,7 +76,9 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-
+# Input: No arguments.
+# Return: True if database initialization succeeds.
+# Purpose: Initializes the database schema once per Streamlit process.
 @st.cache_resource
 def prepare_application() -> bool:
     """Initialize the existing database once per Streamlit process."""
@@ -90,12 +91,13 @@ try:
 except Exception:
     logger.exception("Database initialization failed.")
     st.error(
-        "DocuMind could not initialize its database. "
-        "Check the terminal for details."
+        "DocuMind could not initialize its database. Check the terminal for details."
     )
     st.stop()
 
-
+# Input: No arguments.
+# Return: A tuple containing two lists: saved PDFs and conversations.
+# Purpose: Loads saved PDFs and conversations, excluding duplicate PDF content from the displayed list.
 def load_application_data() -> tuple[list[dict], list[dict]]:
     """Load saved PDFs and conversations from the existing database."""
     # Hide legacy duplicate uploads by comparing actual file contents.
@@ -103,6 +105,9 @@ def load_application_data() -> tuple[list[dict], list[dict]]:
     return unique_documents_by_content(list_documents()), list_conversations()
 
 
+# Input: A conversation ID (str) or None.
+# Return: A conversation dictionary if found, otherwise None.
+# Purpose: Retrieves the selected conversation from the database.
 def get_active_conversation(
     conversation_id: str | None,
 ) -> dict | None:
@@ -112,24 +117,20 @@ def get_active_conversation(
 
     return get_conversation(conversation_id)
 
-
+# Input: A list of PDF document IDs (list[str]).
+# Return: The newly created conversation ID (str).
+# Purpose: Validates the selected PDF IDs, creates a conversation, and associates the selected PDFs with it.
 def create_chat_for_documents(document_ids: list[str]) -> str:
     """Create a conversation and associate it with existing PDFs."""
     unique_document_ids = list(
-        dict.fromkeys(
-            document_id
-            for document_id in document_ids
-            if document_id
-        )
+        dict.fromkeys(document_id for document_id in document_ids if document_id)
     )
 
     if not unique_document_ids:
         raise ValueError("Select at least one PDF before starting a chat.")
 
     # Validate selected IDs so UI labels cannot be mistaken for document IDs.
-    saved_document_ids = {
-        document["document_id"] for document in list_documents()
-    }
+    saved_document_ids = {document["document_id"] for document in list_documents()}
 
     invalid_ids = [
         document_id
@@ -188,32 +189,18 @@ if active_conversation is None:
 
 
 # Build ID-to-document and display-label-to-ID mappings.
-document_by_id = {
-    document["document_id"]: document
-    for document in documents
-}
+document_by_id = {document["document_id"]: document for document in documents}
 
 document_options = {
-    (
-        f"{document['filename']} "
-        f"· {document['document_id'][:8]}"
-    ): document["document_id"]
+    (f"{document['filename']} · {document['document_id'][:8]}"): document["document_id"]
     for document in documents
 }
-
-document_id_by_label = {
-    label: document_id
-    for label, document_id in document_options.items()
-}
-
 
 # Load the PDFs currently associated with the selected conversation.
 current_associations: list[dict] = []
 if active_conversation_id:
     try:
-        current_associations = list_conversation_documents(
-            active_conversation_id
-        )
+        current_associations = list_conversation_documents(active_conversation_id)
         current_document_ids = list(
             dict.fromkeys(
                 item["document_id"]
@@ -290,7 +277,9 @@ with st.sidebar:
             except (PDFProcessingError, ValueError) as exc:
                 failures.append(f"{uploaded_file.name}: {exc}")
             except Exception:
-                logger.exception("Failed to process uploaded PDF %s.", uploaded_file.name)
+                logger.exception(
+                    "Failed to process uploaded PDF %s.", uploaded_file.name
+                )
                 failures.append(f"{uploaded_file.name}: unexpected processing error.")
 
         if processed_ids:
@@ -301,13 +290,17 @@ with st.sidebar:
                     associations = list_conversation_documents(existing_id)
                     combined_ids = [item["document_id"] for item in associations]
                     combined_ids.extend(processed_ids)
-                    set_conversation_documents(existing_id, list(dict.fromkeys(combined_ids)))
+                    set_conversation_documents(
+                        existing_id, list(dict.fromkeys(combined_ids))
+                    )
                 else:
                     new_id = create_chat_for_documents(processed_ids)
                     st.session_state["active_conversation_id"] = new_id
                 st.rerun()
             except Exception:
-                logger.exception("Processed PDFs, but could not attach them to a conversation.")
+                logger.exception(
+                    "Processed PDFs, but could not attach them to a conversation."
+                )
                 st.error(
                     "The PDFs were processed, but could not be attached to the chat. "
                     "Their saved records were not intentionally deleted."
@@ -330,7 +323,8 @@ with st.sidebar:
 
         valid_ids = {doc["document_id"] for doc in documents}
         st.session_state[selected_ids_key] = [
-            doc_id for doc_id in st.session_state[selected_ids_key]
+            doc_id
+            for doc_id in st.session_state[selected_ids_key]
             if doc_id in valid_ids
         ]
 
@@ -361,7 +355,8 @@ with st.sidebar:
                     use_container_width=True,
                 ):
                     st.session_state["open_pdf_menu_id"] = (
-                        None if st.session_state["open_pdf_menu_id"] == document_id
+                        None
+                        if st.session_state["open_pdf_menu_id"] == document_id
                         else document_id
                     )
                     st.session_state["confirm_delete_pdf_id"] = None
@@ -402,17 +397,27 @@ with st.sidebar:
                             try:
                                 delete_pdf_and_chats(document_id)
                                 if st.session_state.get("active_conversation_id"):
-                                    current_id = st.session_state["active_conversation_id"]
+                                    current_id = st.session_state[
+                                        "active_conversation_id"
+                                    ]
                                     if get_active_conversation(current_id) is None:
-                                        st.session_state["active_conversation_id"] = None
+                                        st.session_state["active_conversation_id"] = (
+                                            None
+                                        )
                                 st.session_state["open_pdf_menu_id"] = None
                                 st.session_state["confirm_delete_pdf_id"] = None
                                 st.session_state["new_chat_selection_version"] += 1
-                                st.success(f"Deleted {filename} and its associated chats.")
+                                st.success(
+                                    f"Deleted {filename} and its associated chats."
+                                )
                                 st.rerun()
                             except Exception:
-                                logger.exception("Could not delete PDF %s.", document_id)
-                                st.error("PDF deletion failed. Check the terminal for details.")
+                                logger.exception(
+                                    "Could not delete PDF %s.", document_id
+                                )
+                                st.error(
+                                    "PDF deletion failed. Check the terminal for details."
+                                )
                     with cancel_col:
                         if st.button(
                             "Cancel",
@@ -443,14 +448,20 @@ with st.sidebar:
     st.markdown("### PDFs in this chat")
     if active_conversation_id and documents:
         selection_key = f"pdf_selection_{active_conversation_id}"
-        valid_current_ids = [
-            item["document_id"] for item in current_associations
-            if item.get("document_id") in document_by_id
-        ] if active_conversation_id else []
+        valid_current_ids = (
+            [
+                item["document_id"]
+                for item in current_associations
+                if item.get("document_id") in document_by_id
+            ]
+            if active_conversation_id
+            else []
+        )
 
         if selection_key not in st.session_state:
             st.session_state[selection_key] = [
-                label for label, doc_id in document_options.items()
+                label
+                for label, doc_id in document_options.items()
                 if doc_id in valid_current_ids
             ]
 
@@ -461,10 +472,15 @@ with st.sidebar:
             help="This changes which saved PDFs the current conversation searches.",
         )
         selected_pdf_ids = [
-            document_options[label] for label in selected_pdf_labels
+            document_options[label]
+            for label in selected_pdf_labels
             if label in document_options
         ]
-        if st.button("Save PDF selection", use_container_width=True, key=f"save_pdf_selection_{active_conversation_id}"):
+        if st.button(
+            "Save PDF selection",
+            use_container_width=True,
+            key=f"save_pdf_selection_{active_conversation_id}",
+        ):
             try:
                 if not selected_pdf_ids:
                     st.warning("Select at least one PDF for this conversation.")
@@ -474,7 +490,9 @@ with st.sidebar:
                     st.rerun()
             except Exception:
                 logger.exception("Could not update conversation PDF associations.")
-                st.error("Could not save the PDF selection. Check the terminal for details.")
+                st.error(
+                    "Could not save the PDF selection. Check the terminal for details."
+                )
     elif not active_conversation_id:
         st.caption("Create or open a chat to manage its PDF selection.")
     else:
@@ -488,9 +506,13 @@ with st.sidebar:
         for conversation in conversations:
             conversation_id = conversation["conversation_id"]
             title = conversation.get("title") or "New chat"
-            filenames = conversation.get("filenames") or conversation.get("filename", "")
+            filenames = conversation.get("filenames") or conversation.get(
+                "filename", ""
+            )
             if isinstance(filenames, list):
-                pdf_summary = ", ".join(dict.fromkeys(name for name in filenames if name))
+                pdf_summary = ", ".join(
+                    dict.fromkeys(name for name in filenames if name)
+                )
             else:
                 pdf_summary = str(filenames or "")
 
@@ -503,7 +525,9 @@ with st.sidebar:
                     button_label,
                     key=f"open_conversation_{conversation_id}",
                     use_container_width=True,
-                    type="primary" if conversation_id == active_conversation_id else "secondary",
+                    type="primary"
+                    if conversation_id == active_conversation_id
+                    else "secondary",
                 ):
                     st.session_state["active_conversation_id"] = conversation_id
                     st.rerun()
@@ -515,7 +539,8 @@ with st.sidebar:
                     use_container_width=True,
                 ):
                     st.session_state["open_chat_menu_id"] = (
-                        None if st.session_state["open_chat_menu_id"] == conversation_id
+                        None
+                        if st.session_state["open_chat_menu_id"] == conversation_id
                         else conversation_id
                     )
                     st.session_state["confirm_delete_chat_id"] = None
@@ -555,14 +580,21 @@ with st.sidebar:
                         ):
                             try:
                                 delete_conversation(conversation_id)
-                                if st.session_state.get("active_conversation_id") == conversation_id:
+                                if (
+                                    st.session_state.get("active_conversation_id")
+                                    == conversation_id
+                                ):
                                     st.session_state["active_conversation_id"] = None
                                 st.session_state["open_chat_menu_id"] = None
                                 st.session_state["confirm_delete_chat_id"] = None
                                 st.rerun()
                             except Exception:
-                                logger.exception("Could not delete conversation %s.", conversation_id)
-                                st.error("Chat deletion failed. Check the terminal for details.")
+                                logger.exception(
+                                    "Could not delete conversation %s.", conversation_id
+                                )
+                                st.error(
+                                    "Chat deletion failed. Check the terminal for details."
+                                )
                     with cancel_col:
                         if st.button(
                             "Cancel",
@@ -589,14 +621,10 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-active_conversation_id = st.session_state.get(
-    "active_conversation_id"
-)
+active_conversation_id = st.session_state.get("active_conversation_id")
 
 try:
-    active_conversation = get_active_conversation(
-        active_conversation_id
-    )
+    active_conversation = get_active_conversation(active_conversation_id)
 except Exception:
     logger.exception("Could not load the active conversation.")
     active_conversation = None
@@ -604,8 +632,7 @@ except Exception:
 if active_conversation is None:
     if documents:
         st.info(
-            "Select a saved conversation or click **New Chat** "
-            "in the sidebar to begin."
+            "Select a saved conversation or click **New Chat** in the sidebar to begin."
         )
     else:
         st.info(
@@ -618,9 +645,7 @@ if active_conversation is None:
 active_document_id = active_conversation["document_id"]
 
 try:
-    active_associations = list_conversation_documents(
-        active_conversation_id
-    )
+    active_associations = list_conversation_documents(active_conversation_id)
 except Exception:
     logger.exception("Could not load PDFs for the active conversation.")
     active_associations = []
@@ -628,18 +653,14 @@ except Exception:
 # Deduplicate filenames for display without changing database associations.
 active_pdf_names = list(
     dict.fromkeys(
-        item["filename"]
-        for item in active_associations
-        if item.get("filename")
+        item["filename"] for item in active_associations if item.get("filename")
     )
 )
 
 st.subheader(active_conversation.get("title") or "New chat")
 
 if active_pdf_names:
-    st.caption(
-        "PDFs in this conversation: " + ", ".join(active_pdf_names)
-    )
+    st.caption("PDFs in this conversation: " + ", ".join(active_pdf_names))
 else:
     st.warning(
         "No PDFs are associated with this conversation. "
@@ -657,10 +678,7 @@ except Exception:
         active_conversation_id,
     )
     history = []
-    st.warning(
-        "Previous messages could not be loaded. "
-        "Check the terminal for details."
-    )
+    st.warning("Previous messages could not be loaded. Check the terminal for details.")
 
 for message in history:
     role = str(message.get("role", "assistant"))
@@ -679,9 +697,7 @@ question = st.chat_input(
 
 if question:
     try:
-        with st.spinner(
-            "Searching your PDFs and preparing an answer..."
-        ):
+        with st.spinner("Searching your PDFs and preparing an answer..."):
             answer_question(
                 active_document_id,
                 question,
@@ -695,7 +711,4 @@ if question:
             "Could not answer a question for conversation %s.",
             active_conversation_id,
         )
-        st.error(
-            "The question could not be answered. "
-            "Check the terminal for details."
-        )
+        st.error("The question could not be answered. Check the terminal for details.")

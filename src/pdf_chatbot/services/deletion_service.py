@@ -10,9 +10,7 @@ from src.pdf_chatbot.repositories.sqlite_repository import (
     list_documents,
 )
 
-UPLOAD_DIRECTORY = (
-    Path(__file__).resolve().parents[3] / "data" / "uploads"
-).resolve()
+UPLOAD_DIRECTORY = (Path(__file__).resolve().parents[3] / "data" / "uploads").resolve()
 
 
 def delete_pdf_and_chats(document_id: str) -> dict[str, int]:
@@ -33,11 +31,7 @@ def delete_pdf_and_chats(document_id: str) -> dict[str, int]:
     """
     # Find the requested document.
     document = next(
-        (
-            item
-            for item in list_documents()
-            if item["document_id"] == document_id
-        ),
+        (item for item in list_documents() if item["document_id"] == document_id),
         None,
     )
 
@@ -49,8 +43,7 @@ def delete_pdf_and_chats(document_id: str) -> dict[str, int]:
 
     if stored_path.parent != UPLOAD_DIRECTORY:
         raise ValueError(
-            "The stored PDF path is outside the upload directory. "
-            "No data was deleted."
+            "The stored PDF path is outside the upload directory. No data was deleted."
         )
 
     # Identify every conversation associated with this PDF.
@@ -60,10 +53,7 @@ def delete_pdf_and_chats(document_id: str) -> dict[str, int]:
         conversation_id = conversation["conversation_id"]
         associations = list_conversation_documents(conversation_id)
 
-        if any(
-            item["document_id"] == document_id
-            for item in associations
-        ):
+        if any(item["document_id"] == document_id for item in associations):
             associated_conversation_ids.append(conversation_id)
 
     # Remove the physical PDF first. If this fails, preserve database records.
