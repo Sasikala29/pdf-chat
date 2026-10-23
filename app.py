@@ -6,24 +6,20 @@ import streamlit as st
 from pydantic import ValidationError
 
 from src.pdf_chatbot.core.config import get_settings
-from src.pdf_chatbot.database.connection import initialize_database
-from src.pdf_chatbot.repositories.sqlite_repository import (
-    create_conversation,
-    delete_conversation,
-    get_conversation,
-    list_conversation_documents,
-    list_conversations,
-    list_documents,
-    set_conversation_documents,
-)
-from src.pdf_chatbot.services.chat_service import (
+from src.pdf_chatbot.app_controller import (
     answer_question,
+    create_chat_for_documents,
+    delete_conversation_by_id,
+    delete_pdf_and_chats,
+    get_active_conversation,
+    get_conversation_documents,
     get_document_chat_history,
+    load_application_data,
+    initialize_application,
+    process_uploaded_pdf,
+    save_conversation_documents,
 )
-from src.pdf_chatbot.services.deletion_service import delete_pdf_and_chats
-from src.pdf_chatbot.services.document_service import process_uploaded_pdf
 from src.pdf_chatbot.services.pdf_service import PDFProcessingError
-from src.pdf_chatbot.utils.pdf_identity import unique_documents_by_content
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +78,7 @@ st.markdown(
 @st.cache_resource
 def prepare_application() -> bool:
     """Initialize the existing database once per Streamlit process."""
-    initialize_database()
+    initialize_application()
     return True
 
 
@@ -94,68 +90,6 @@ except Exception:
         "DocuMind could not initialize its database. Check the terminal for details."
     )
     st.stop()
-
-# Input: No arguments.
-# Return: A tuple containing two lists: saved PDFs and conversations.
-# Purpose: Loads saved PDFs and conversations, excluding duplicate PDF content from the displayed list.
-def load_application_data() -> tuple[list[dict], list[dict]]:
-    """Load saved PDFs and conversations from the existing database."""
-    # Hide legacy duplicate uploads by comparing actual file contents.
-    # This changes only the display list; it does not alter existing records.
-    return unique_documents_by_content(list_documents()), list_conversations()
-
-
-# Input: A conversation ID (str) or None.
-# Return: A conversation dictionary if found, otherwise None.
-# Purpose: Retrieves the selected conversation from the database.
-def get_active_conversation(
-    conversation_id: str | None,
-) -> dict | None:
-    """Return the selected conversation if it still exists."""
-    if not conversation_id:
-        return None
-
-    return get_conversation(conversation_id)
-
-# Input: A list of PDF document IDs (list[str]).
-# Return: The newly created conversation ID (str).
-# Purpose: Validates the selected PDF IDs, creates a conversation, and associates the selected PDFs with it.
-def create_chat_for_documents(document_ids: list[str]) -> str:
-    """Create a conversation and associate it with existing PDFs."""
-    unique_document_ids = list(
-        dict.fromkeys(document_id for document_id in document_ids if document_id)
-    )
-
-    if not unique_document_ids:
-        raise ValueError("Select at least one PDF before starting a chat.")
-
-    # Validate selected IDs so UI labels cannot be mistaken for document IDs.
-    saved_document_ids = {document["document_id"] for document in list_documents()}
-
-    invalid_ids = [
-        document_id
-        for document_id in unique_document_ids
-        if document_id not in saved_document_ids
-    ]
-
-    if invalid_ids:
-        raise ValueError(
-            "The selected PDF list contains invalid document IDs. "
-            "Refresh the page and select the PDFs again."
-        )
-
-    conversation = create_conversation(
-        unique_document_ids[0],
-        title="New chat",
-    )
-    conversation_id = conversation["conversation_id"]
-
-    set_conversation_documents(
-        conversation_id,
-        unique_document_ids,
-    )
-
-    return conversation_id
 
 
 # Initialize session state without resetting an existing selection.
@@ -200,7 +134,7 @@ document_options = {
 current_associations: list[dict] = []
 if active_conversation_id:
     try:
-        current_associations = list_conversation_documents(active_conversation_id)
+        current_associations = get_conversation_documents(active_conversation_id)
         current_document_ids = list(
             dict.fromkeys(
                 item["document_id"]
@@ -287,10 +221,10 @@ with st.sidebar:
                 existing_id = st.session_state.get("active_conversation_id")
                 existing_conversation = get_active_conversation(existing_id)
                 if existing_conversation is not None:
-                    associations = list_conversation_documents(existing_id)
+                    associations = get_conversation_documents(existing_id)
                     combined_ids = [item["document_id"] for item in associations]
                     combined_ids.extend(processed_ids)
-                    set_conversation_documents(
+                    save_conversation_documents(
                         existing_id, list(dict.fromkeys(combined_ids))
                     )
                 else:
@@ -485,7 +419,7 @@ with st.sidebar:
                 if not selected_pdf_ids:
                     st.warning("Select at least one PDF for this conversation.")
                 else:
-                    set_conversation_documents(active_conversation_id, selected_pdf_ids)
+                    save_conversation_documents(active_conversation_id, selected_pdf_ids)
                     st.success("PDF selection saved.")
                     st.rerun()
             except Exception:
@@ -579,7 +513,7 @@ with st.sidebar:
                             use_container_width=True,
                         ):
                             try:
-                                delete_conversation(conversation_id)
+                                delete_conversation_by_id(conversation_id)
                                 if (
                                     st.session_state.get("active_conversation_id")
                                     == conversation_id
@@ -645,7 +579,7 @@ if active_conversation is None:
 active_document_id = active_conversation["document_id"]
 
 try:
-    active_associations = list_conversation_documents(active_conversation_id)
+    active_associations = get_conversation_documents(active_conversation_id)
 except Exception:
     logger.exception("Could not load PDFs for the active conversation.")
     active_associations = []

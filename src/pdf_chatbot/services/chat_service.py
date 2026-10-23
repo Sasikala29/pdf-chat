@@ -6,6 +6,9 @@ from src.pdf_chatbot.core.constants import (
     NO_ANSWER,
 )
 from src.pdf_chatbot.repositories.sqlite_repository import (
+    create_conversation,
+    list_documents,
+    set_conversation_documents,
     get_conversation,
     list_conversation_documents,
     load_chat_history,
@@ -16,6 +19,46 @@ from src.pdf_chatbot.services.embedding_service import embed_query
 from src.pdf_chatbot.services.llm_service import generate_answer
 from src.pdf_chatbot.services.retrieval_service import retrieve_relevant_chunks
 
+
+# Input: A list of PDF document IDs (list[str]).
+# Return: The newly created conversation ID (str).
+# Purpose: Validates the selected PDF IDs, creates a conversation, and associates the selected PDFs with it.
+def create_chat_for_documents(document_ids: list[str]) -> str:
+    """Create a conversation and associate it with existing PDFs."""
+    unique_document_ids = list(
+        dict.fromkeys(document_id for document_id in document_ids if document_id)
+    )
+
+    if not unique_document_ids:
+        raise ValueError("Select at least one PDF before starting a chat.")
+
+    # Validate selected IDs so UI labels cannot be mistaken for document IDs.
+    saved_document_ids = {document["document_id"] for document in list_documents()}
+
+    invalid_ids = [
+        document_id
+        for document_id in unique_document_ids
+        if document_id not in saved_document_ids
+    ]
+
+    if invalid_ids:
+        raise ValueError(
+            "The selected PDF list contains invalid document IDs. "
+            "Refresh the page and select the PDFs again."
+        )
+
+    conversation = create_conversation(
+        unique_document_ids[0],
+        title="New chat",
+    )
+    conversation_id = conversation["conversation_id"]
+
+    set_conversation_documents(
+        conversation_id,
+        unique_document_ids,
+    )
+
+    return conversation_id
 
 def _save_message(
     document_id: str,

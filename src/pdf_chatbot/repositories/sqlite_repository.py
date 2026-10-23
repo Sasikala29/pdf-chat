@@ -347,7 +347,7 @@ def list_conversations(
                 SELECT 1
                 FROM conversation_documents AS cd
                 WHERE cd.conversation_id = c.conversation_id
-                  AND cd.document_id = ?
+                AND cd.document_id = ?
             )
         """
         parameters = (document_id,)
